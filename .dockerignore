@@ -1,0 +1,33 @@
+# Version control
+.git
+.gitignore
+
+# Python virtual environment
+venv/
+env/
+ENV/
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Local development settings
+.env
+
+# Docker related files
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Other
+.DS_Store
+*.log
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.idea/
+.vscode/ 
