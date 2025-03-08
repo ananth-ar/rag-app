@@ -6,6 +6,7 @@ import json
 import shutil
 from datetime import datetime
 from app.services.document_service import ingest_document, search_documents
+from app.services.service_rag import generate_rag_response
 from app.utils.document_parser import parse_document
 import uuid
 
@@ -14,7 +15,20 @@ router = APIRouter()
 
 # Create a temporary directory for file uploads
 UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "rag_uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+try:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    # Test write permissions by creating and removing a test file
+    test_file = os.path.join(UPLOAD_DIR, "test_permissions")
+    with open(test_file, 'w') as f:
+        f.write('test')
+    os.remove(test_file)
+    print(f"Upload directory created successfully: {UPLOAD_DIR}")
+except (PermissionError, OSError) as e:
+    print(f"Error with upload directory {UPLOAD_DIR}: {str(e)}")
+    # Fall back to a directory in the current project
+    UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "uploads")
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    print(f"Using fallback upload directory: {UPLOAD_DIR}")
 
 
 @router.get("/")
@@ -102,15 +116,37 @@ async def search_documents_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/rag-search/")
+async def rag_search_endpoint(
+    query: str,
+    document_id: Optional[str] = None,
+    limit: int = 3
+):
+    """
+    Endpoint for RAG (Retrieval Augmented Generation) search using Anthropic's Claude model.
+    
+    Args:
+        query (str): The user's question
+        document_id (str, optional): Filter results to a specific document
+        limit (int): Maximum number of context chunks to use
+    
+    Returns:
+        dict: RAG response including the answer and context
+    """
+    try:
+        result = generate_rag_response(query, document_id, limit)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/parse-document")
 async def test_parse_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...)
 ):
     """
-    Test endpoint to parse a document and return its content and metadata.
-    Supports PDF, DOCX, JSON, and TXT formats.
-    Does not store the document in the database.
+    Test endpoint for parsing a document without saving to database.
     
     Args:
         file (UploadFile): The document file to parse (PDF, DOCX, JSON, or TXT)
@@ -118,19 +154,24 @@ async def test_parse_document(
     Returns:
         dict: The parsed content and metadata
     """
+    file_path = None
     try:
-        # Create a temporary file
-        file_path = os.path.join(UPLOAD_DIR, file.filename)
+        # Create a unique filename to avoid collisions
+        unique_filename = f"{uuid.uuid4().hex}_{file.filename}"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
         
         # Save the uploaded file
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        try:
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+        except Exception as e:
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to save uploaded file: {str(e)}. Path: {file_path}"
+            )
         
         # Parse the document based on its format
         content, metadata_dict = parse_document(file_path)
-        
-        # Clean up the temporary file
-        background_tasks.add_task(os.remove, file_path)
         
         return {
             "message": "Document parsed successfully",
@@ -140,7 +181,11 @@ async def test_parse_document(
             "metadata": metadata_dict
         }
     except Exception as e:
-        # Clean up in case of error
-        if 'file_path' in locals() and os.path.exists(file_path):
-            os.remove(file_path)
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=f"Error parsing document: {str(e)}")
+    finally:
+        # Clean up the temporary file
+        if file_path and os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                print(f"Warning: Failed to remove temporary file {file_path}: {str(e)}") 

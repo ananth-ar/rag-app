@@ -2,22 +2,19 @@ import os
 import weaviate
 from weaviate.classes.init import Auth
 from weaviate.classes.config import Configure, Property, DataType
+from app.config import get_settings
 
 # Define the document collection name
 document_class_name = "Document"
 
 def init_weaviate_client():
     """Initialize and return a Weaviate client."""
-    weaviate_url = os.getenv("WCD_URL")
-    weaviate_api_key = os.getenv("WCD_API_KEY")
-    
-    if not weaviate_url or not weaviate_api_key:
-        raise ValueError("Weaviate credentials not found in environment variables")
+    settings = get_settings()
     
     try:
         client = weaviate.connect_to_weaviate_cloud(
-            cluster_url=weaviate_url,
-            auth_credentials=Auth.api_key(weaviate_api_key)
+            cluster_url=settings.WCD_URL,
+            auth_credentials=Auth.api_key(settings.WCD_API_KEY)
         )
         return client
     except Exception as e:

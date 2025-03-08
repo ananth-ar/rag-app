@@ -11,6 +11,7 @@ A simple Retrieval Augmented Generation (RAG) system using Weaviate as the vecto
 - Automatic metadata extraction from documents
 - Automatic document ID generation
 - Smart document processing with format auto-detection
+- **RAG-powered answers using Anthropic's Claude model**
 
 ## Setup
 
@@ -24,10 +25,20 @@ A simple Retrieval Augmented Generation (RAG) system using Weaviate as the vecto
    ```
    pip install -r requirements.txt
    ```
-4. Create a `.env` file with your Weaviate credentials:
+4. Create a `.env` file with your configuration:
+
    ```
+   # Weaviate Cloud Credentials (Required)
    WCD_URL=your_weaviate_cloud_url
    WCD_API_KEY=your_weaviate_api_key
+
+   # Anthropic API Key and Settings
+   ANTHROPIC_API_KEY=your_anthropic_api_key        # Required
+   ANTHROPIC_MODEL=claude-3-sonnet-20240229        # Optional, defaults to claude-3-sonnet-20240229
+   ANTHROPIC_MAX_TOKENS=1000                       # Optional, defaults to 1000
+
+   # Application Settings
+   DEBUG=false                                     # Optional, defaults to false
    ```
 
 ## Running the Application
@@ -103,6 +114,49 @@ Example:
 
 ```
 curl "http://localhost:8000/search/?query=sample%20content&limit=5"
+```
+
+### 3. RAG Search with Anthropic Claude
+
+```
+GET /rag-search/?query=your_question&document_id=optional_doc_id&limit=3
+```
+
+Parameters:
+
+- `query`: The question you want to ask about your documents
+- `document_id` (optional): Filter results to a specific document
+- `limit` (optional, default=3): Maximum number of context chunks to use
+
+Example:
+
+```
+curl "http://localhost:8000/rag-search/?query=What%20is%20the%20main%20policy%20described%20in%20the%20document%3F"
+```
+
+Response:
+
+```json
+{
+  "query": "What is the main policy described in the document?",
+  "answer": "Based on the provided context, the main policy described in the document appears to be a whistleblower policy. The document contains information about reporting procedures and protections for individuals who report suspected misconduct or violations.",
+  "context": [
+    {
+      "document_id": "whistleblower-policy-ba-revised_20240308125546",
+      "content": "...",
+      "metadata": "...",
+      "chunk_id": 1,
+      "score": 0.92
+    },
+    {
+      "document_id": "whistleblower-policy-ba-revised_20240308125546",
+      "content": "...",
+      "metadata": "...",
+      "chunk_id": 2,
+      "score": 0.85
+    }
+  ]
+}
 ```
 
 ## Supported File Formats
