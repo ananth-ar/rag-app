@@ -73,7 +73,7 @@ def ingest_document(document_id: str, content: str, metadata: str = None):
 
 def search_documents(query: str, document_id: str = None, limit: int = 3):
     """
-    Search for documents that match the given query.
+    Search for documents that match the given query using hybrid search.
     
     Args:
         query (str): The search query
@@ -84,15 +84,17 @@ def search_documents(query: str, document_id: str = None, limit: int = 3):
         dict: Search results
     """
     try:
-        # Generate embedding for the query
+        # Generate embedding for the query since we're not using a vectorizer in Weaviate
         query_embedding = model.encode(query).tolist()
         
         # Get the collection
         collection = weaviate_client.collections.get(document_class_name)
         
-        # Set up query parameters
+        # Set up query parameters for hybrid search
         query_params = {
-            "near_vector": query_embedding,
+            "query": query,  # For the BM25 part of hybrid search
+            "vector": query_embedding,  # For the vector part of hybrid search
+            "alpha": 0.5,  # Adjust weighting between vector and keyword search (0.0 = keyword, 1.0 = vector)
             "limit": limit,
             "return_metadata": MetadataQuery(distance=True)
         }
@@ -101,8 +103,8 @@ def search_documents(query: str, document_id: str = None, limit: int = 3):
         if document_id:
             query_params["filters"] = Filter.by_property("document_id").equal(document_id)
         
-        # Execute the query
-        response = collection.query.near_vector(**query_params)
+        # Execute the hybrid query
+        response = collection.query.hybrid(**query_params)
         
         # Extract and format results
         formatted_results = []

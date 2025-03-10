@@ -24,30 +24,45 @@ def init_weaviate_client():
 # Create Weaviate client as a global variable
 weaviate_client = init_weaviate_client()
 
-def create_schema_if_not_exists():
-    """Create the schema for document collection if it doesn't exist."""
-    try:
-        # Check if collection exists by trying to get it
-        try:
-            weaviate_client.collections.get(document_class_name)
-            print(f"Schema for class {document_class_name} already exists")
-            return
-        except Exception:
-            # Collection doesn't exist, create it
-            pass
-        
-        # Create collection with properties
-        weaviate_client.collections.create(
+def create_document_class():
+    # Check if the class already exists
+    if not weaviate_client.collections.exists(document_class_name):
+        # Create the collection with the new API format
+        collection = weaviate_client.collections.create(
             name=document_class_name,
-            vectorizer_config=Configure.Vectorizer.none(),  # We'll provide our own vectors
+            description="A class to store documents",
+            vectorizer_config=None,  # Use 'none' vectorizer - we're adding vectors manually
             properties=[
-                Property(name="content", data_type=DataType.TEXT),
-                Property(name="document_id", data_type=DataType.TEXT),
-                Property(name="chunk_id", data_type=DataType.INT),
-                Property(name="metadata", data_type=DataType.TEXT)
+                weaviate.classes.config.Property(
+                    name="content",
+                    data_type=weaviate.classes.config.DataType.TEXT,
+                    description="Content of the document chunk"
+                ),
+                weaviate.classes.config.Property(
+                    name="document_id",
+                    data_type=weaviate.classes.config.DataType.TEXT,
+                    description="ID of the original document"
+                ),
+                weaviate.classes.config.Property(
+                    name="chunk_id",
+                    data_type=weaviate.classes.config.DataType.INT,
+                    description="ID of the document chunk"
+                ),
+                weaviate.classes.config.Property(
+                    name="metadata",
+                    data_type=weaviate.classes.config.DataType.TEXT,
+                    description="Additional metadata about the document"
+                )
             ]
         )
-        print(f"Created schema for class {document_class_name}")
-    except Exception as e:
-        print(f"Error creating schema: {e}")
-        raise 
+        print(f"Class '{document_class_name}' created successfully.")
+    else:
+        print(f"Schema for class {document_class_name} already exists")
+
+# Function that main.py is looking for
+def create_schema_if_not_exists():
+    """Create the Weaviate schema if it doesn't exist. This is called from main.py."""
+    create_document_class()
+
+# This is still called during module import, which is fine
+create_document_class()
