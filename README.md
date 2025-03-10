@@ -12,6 +12,7 @@ A simple Retrieval Augmented Generation (RAG) system using Weaviate as the vecto
 - Automatic document ID generation
 - Smart document processing with format auto-detection
 - **RAG-powered answers using Anthropic's Claude model**
+- **JSON Data RAG Extension for structured queries on JSON data**
 
 ## Setup
 
@@ -158,6 +159,69 @@ Response:
   ]
 }
 ```
+
+### 4. JSON Data RAG Extension
+
+```
+POST /json-query
+```
+
+Request Body:
+
+```json
+{
+  "document_id": "optional_doc_id",
+  "field": "price",
+  "operation": "max",
+  "filter": {
+    "category": "Electronics"
+  }
+}
+```
+
+Parameters:
+
+- `document_id` (optional): Filter to a specific document
+- `field`: The field to query (supports dot notation for nested fields, e.g., "products.items.price")
+- `operation`: One of "max", "min", "sum", "average", "median", "count"
+- `filter` (optional): Filter criteria to apply before performing the operation
+
+Supported Operations:
+
+- `max`: Find the maximum value of the specified field
+- `min`: Find the minimum value of the specified field
+- `sum`: Calculate the sum of all values for the specified field
+- `average`: Calculate the average of all values for the specified field
+- `median`: Calculate the median of all values for the specified field
+- `count`: Count the number of values for the specified field
+
+Example:
+
+```bash
+curl -X POST "http://localhost:8000/json-query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "field": "price",
+    "operation": "max",
+    "filter": {
+      "category": "Electronics"
+    }
+  }'
+```
+
+Response:
+
+```json
+{
+  "result": 1299.99,
+  "count": 12,
+  "operation": "max",
+  "field": "price",
+  "document_id": "all"
+}
+```
+
+This endpoint implements the JSON Data RAG Extension, which allows for structured queries on JSON documents. It enables performing aggregate operations like finding maximum/minimum values or calculating sums and averages on specific fields within JSON data.
 
 ## Supported File Formats
 

@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Form, HTTPException, UploadFile, File, BackgroundTasks
 import os
 import tempfile
@@ -7,8 +7,10 @@ import shutil
 from datetime import datetime
 from app.services.document_service import ingest_document, search_documents
 from app.services.service_rag import generate_rag_response
+from app.services.json_query_service import query_json_data
 from app.utils.document_parser import parse_document
 import uuid
+from pydantic import BaseModel, Field
 
 # Create router
 router = APIRouter()
@@ -188,4 +190,50 @@ async def test_parse_document(
             try:
                 os.remove(file_path)
             except Exception as e:
-                print(f"Warning: Failed to remove temporary file {file_path}: {str(e)}") 
+                print(f"Warning: Failed to remove temporary file {file_path}: {str(e)}")
+
+
+# Model for JSON data query
+class JsonQueryRequest(BaseModel):
+    document_id: Optional[str] = Field(None, description="ID of the document to query (optional)")
+    field: str = Field(..., description="Field to query (supports dot notation for nested fields)")
+    operation: str = Field(..., description="Operation to perform (max, min, sum, average, median, count)")
+    filter: Optional[Dict[str, Any]] = Field(None, description="Filter criteria (optional)")
+
+# JSON data query endpoint
+@router.post("/json-query")
+async def json_query_endpoint(request: JsonQueryRequest):
+    """
+    Endpoint for structured queries on JSON data.
+    Supports aggregation operations like max, min, sum, average, median, count.
+    
+    Args:
+        request (JsonQueryRequest): The query request containing:
+            - document_id (optional): ID of the document to query
+            - field: Field to query (supports dot notation for nested fields)
+            - operation: Operation to perform (max, min, sum, average, median, count)
+            - filter (optional): Filter criteria to apply
+    
+    Returns:
+        dict: Result of the operation
+    """
+    try:
+        # Validate operation
+        valid_operations = ["max", "min", "sum", "average", "median", "count"]
+        if request.operation not in valid_operations:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Invalid operation. Supported operations: {', '.join(valid_operations)}"
+            )
+        
+        # Execute query
+        result = query_json_data(
+            document_id=request.document_id,
+            field=request.field,
+            operation=request.operation,
+            filter_criteria=request.filter
+        )
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)) 
