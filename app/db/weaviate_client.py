@@ -14,7 +14,11 @@ def init_weaviate_client():
     try:
         client = weaviate.connect_to_weaviate_cloud(
             cluster_url=settings.WCD_URL,
-            auth_credentials=Auth.api_key(settings.WCD_API_KEY)
+            auth_credentials=Auth.api_key(settings.WCD_API_KEY),
+            additional_headers={
+                # Pass the required header for async indexing
+                "X-Weaviate-Async-Indexing": str(settings.WEAVIATE_ASYNC_INDEXING).lower()
+            }
         )
         return client
     except Exception as e:
@@ -27,11 +31,14 @@ weaviate_client = init_weaviate_client()
 def create_document_class():
     # Check if the class already exists
     if not weaviate_client.collections.exists(document_class_name):
-        # Create the collection with the new API format
+        # Create the collection with dynamic vector index and default inverted index behavior
         collection = weaviate_client.collections.create(
             name=document_class_name,
             description="A class to store documents",
             vectorizer_config=None,  # Use 'none' vectorizer - we're adding vectors manually
+            # Configure vector index as dynamic
+            vector_index_config=weaviate.classes.config.Configure.VectorIndex.dynamic(),
+            # Keep default inverted index behavior
             properties=[
                 weaviate.classes.config.Property(
                     name="content",
@@ -55,7 +62,7 @@ def create_document_class():
                 )
             ]
         )
-        print(f"Class '{document_class_name}' created successfully.")
+        print(f"Class '{document_class_name}' created successfully with dynamic vector index.")
     else:
         print(f"Schema for class {document_class_name} already exists")
 
