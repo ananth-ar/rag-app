@@ -11,7 +11,7 @@ class Settings(BaseModel):
     # Weaviate settings
     WCD_URL: str = os.getenv("WCD_URL", "")
     WCD_API_KEY: str = os.getenv("WCD_API_KEY", "")
-    WEAVIATE_ASYNC_INDEXING: bool = os.getenv("WEAVIATE_ASYNC_INDEXING", "True").lower() == "true"
+    ASYNC_INDEXING: bool = os.getenv("ASYNC_INDEXING", "True").lower() == "true"
     
     # Anthropic settings
     ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")

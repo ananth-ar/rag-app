@@ -7,7 +7,7 @@ import shutil
 from datetime import datetime
 from app.services.document_service import ingest_document, search_documents
 from app.services.service_rag import generate_rag_response
-from app.services.json_query_service import query_json_data
+from app.services.json_query_service import query_json_data, get_json_documents
 from app.utils.document_parser import parse_document
 import uuid
 from pydantic import BaseModel, Field
@@ -235,5 +235,26 @@ async def json_query_endpoint(request: JsonQueryRequest):
         )
         
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/json-documents/")
+async def get_json_documents_endpoint(document_id: Optional[str] = None):
+    """
+    Retrieve JSON documents from the database.
+    
+    Args:
+        document_id (str, optional): Filter results to a specific document
+        
+    Returns:
+        List[Dict[str, Any]]: List of JSON documents
+    """
+    try:
+        documents = get_json_documents(document_id)
+        return {
+            "message": "Documents retrieved successfully",
+            "document_count": len(documents),
+            "documents": documents
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 

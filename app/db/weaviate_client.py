@@ -17,7 +17,7 @@ def init_weaviate_client():
             auth_credentials=Auth.api_key(settings.WCD_API_KEY),
             headers={
                 # Pass the required header for async indexing
-                "X-Weaviate-Async-Indexing": str(settings.WEAVIATE_ASYNC_INDEXING).lower()
+                "X-Weaviate-Async-Indexing": str(settings.ASYNC_INDEXING).lower()
             }
         )
         return client
