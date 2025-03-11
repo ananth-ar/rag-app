@@ -15,7 +15,7 @@ def init_weaviate_client():
         client = weaviate.connect_to_weaviate_cloud(
             cluster_url=settings.WCD_URL,
             auth_credentials=Auth.api_key(settings.WCD_API_KEY),
-            additional_headers={
+            headers={
                 # Pass the required header for async indexing
                 "X-Weaviate-Async-Indexing": str(settings.WEAVIATE_ASYNC_INDEXING).lower()
             }

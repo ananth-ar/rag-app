@@ -41,6 +41,26 @@ A simple Retrieval Augmented Generation (RAG) system using Weaviate as the vecto
    DEBUG=false                                     # Optional, defaults to false
    ```
 
+## Docker Setup
+
+You can also run this application using Docker:
+
+1. Make sure you have Docker installed on your system.
+
+2. Pull and run the application:
+
+   ```
+   docker run -p 8000:8000 --env-file .env ghcr.io/yourusername/rag-app:latest
+   ```
+
+   Or using Docker Compose:
+
+   ```
+   docker-compose up
+   ```
+
+3. Access the application at http://localhost:8000
+
 ## Running the Application
 
 Start the FastAPI server using one of these methods:
@@ -168,16 +188,6 @@ The system supports the following file formats:
 3. **JSON** (.json) - Processes JSON data and extracts any embedded metadata
 4. **TXT** (.txt) - Processes plain text files
 
-## Testing Document Parsing
-
-You can test the document parsing functionality using the provided test script:
-
-```
-python -m app.utils.test_document_parser /path/to/your/document.pdf
-```
-
-This will show you the extracted content and metadata from the document.
-
 ## Project Structure
 
 The application is organized according to best practices for maintainability and scalability:
@@ -205,3 +215,117 @@ rag-app/
 ├── requirements.txt        # Project dependencies
 └── README.md               # Project documentation
 ```
+
+## System Architecture and Design
+
+### Architecture Overview
+
+The RAG application follows a modular, layered architecture designed for scalability, maintainability, and extensibility:
+
+1. **API Layer** - FastAPI endpoints that handle HTTP requests and responses
+2. **Service Layer** - Core business logic for document processing, retrieval, and generation
+3. **Data Layer** - Integration with Weaviate vector database for storing and querying document embeddings
+4. **Utility Layer** - Helper functions for document parsing, text processing, and other utilities
+
+### Workflow
+
+The system operates through two main workflows:
+
+#### Document Ingestion Workflow:
+
+1. **Document Upload**: User uploads a document via API or UI
+2. **Format Detection**: System automatically detects the file format
+3. **Text Extraction**: Document is parsed using format-specific extractors
+   - PDF: PyMuPDF with Tesseract OCR fallback for scanned documents
+   - DOCX: python-docx for Microsoft Word documents
+   - JSON: Native JSON parser with structure preservation
+   - TXT: Direct text extraction
+4. **Chunking**: Text is split into semantic chunks with configurable size and overlap
+5. **Embedding Generation**: Sentence-Transformers model generates vector embeddings for each chunk
+6. **Vector Storage**: Chunks and their embeddings are stored in Weaviate with document metadata
+7. **De-duplication**: When uploading a document with the same ID, existing chunks are deleted first
+
+#### Retrieval and Generation Workflow:
+
+1. **Query Processing**: User submits a question via the RAG search endpoint
+2. **Hybrid Search**: Weaviate performs a hybrid BM25 + vector search to find relevant text chunks
+   - Vector similarity using cosine distance (all-MiniLM-L6-v2 embeddings)
+   - BM25 keyword matching for lexical relevance
+3. **Context Assembly**: Most relevant chunks are assembled into a context window
+4. **LLM Generation**: Anthropic's Claude model generates an answer based on the retrieved context
+5. **Response**: System returns the generated answer along with source context for transparency
+
+### Design Choices and Trade-offs
+
+#### Embedding Model Selection
+
+- **Choice**: Using sentence-transformers' all-MiniLM-L6-v2 model
+- **Advantages**: Smaller model size, faster inference, reasonable accuracy
+- **Trade-offs**: Added gemini text 004 as an alternative option but couldn't fully implement due to time constraints
+
+#### Hybrid Search Implementation
+
+- **Choice**: Using Weaviate's hybrid search with BM25 + vector similarity
+- **Advantages**: Combines lexical and semantic matching for better results
+- **Trade-offs**: More complex to tune, higher latency
+
+#### Document Chunking Strategy
+
+- **Choice**: Fixed-size chunks with overlap and sentence boundary preservation
+- **Advantages**: Preserves context, improves retrieval accuracy
+- **Trade-offs**: Some storage redundancy due to overlap
+
+#### OCR Processing
+
+- **Choice**: Using Tesseract for scanned PDF processing
+- **Advantages**: Handles documents where text extraction fails
+- **Trade-offs**: Slower processing, less accurate for poor quality scans
+
+#### Dynamic Batch Indexing
+
+- **Choice**: Using Weaviate's batch dynamic indexing
+- **Advantages**: Better ingestion performance for large documents
+- **Trade-offs**: Slight delay before vectors are searchable
+
+#### LLM Integration
+
+- **Choice**: Using Anthropic's Claude model for generation
+- **Advantages**: High-quality responses, good context handling
+- **Trade-offs**: Initially attempted to use native Weaviate RAG capabilities but encountered integration errors; due to time limitations, implemented a custom RAG approach using Anthropic's API directly
+
+### Challenges and Solutions
+
+#### Challenge: Handling Scanned Documents
+
+- **Solution**: Multi-layered extraction with OCR fallback, using PyMuPDF first and Tesseract when needed
+
+#### Challenge: Efficient Vector Storage and Retrieval
+
+- **Solution**: Optimized schema and batch operations with document ID-based filtering
+
+#### Challenge: Balancing Chunk Size and Context
+
+- **Solution**: Dynamic text chunking with overlap that preserves sentence boundaries
+
+#### Challenge: Handling Different Document Formats
+
+- **Solution**: Format-specific parsers with unified interface and consistent error handling
+
+### Potential Improvements
+
+#### Short-term Improvements
+
+- **Implement Re-ranking**: Add a cross-encoder re-ranking step after initial retrieval to improve precision
+- **Enhanced Query Preprocessing**: Implement query expansion and refinement to improve recall
+- **Metadata Filtering**: Add support for filtering results based on document metadata
+- **Improved OCR Pipeline**: Add image preprocessing for better OCR results on low-quality scans
+
+#### Long-term Enhancements
+
+- **Inverted Index Implementation**: Supplement vector search with custom inverted indices for structured data
+- **Multi-modal Support**: Extend to handle images and tables within documents
+- **Advanced Chunking**: Implement hierarchical chunking strategies with parent-child relationships
+- **Fine-tuned Embeddings**: Train domain-specific embedding models for improved retrieval performance
+- **Caching Layer**: Implement Redis caching for frequently accessed documents and queries
+- **Streaming Responses**: Add support for streaming responses from the LLM for better user experience
+- **Self-critique and Verification**: Implement fact-checking and answer verification mechanisms
