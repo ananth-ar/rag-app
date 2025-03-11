@@ -329,3 +329,5 @@ The system operates through two main workflows:
 - **Caching Layer**: Implement Redis caching for frequently accessed documents and queries
 - **Streaming Responses**: Add support for streaming responses from the LLM for better user experience
 - **Self-critique and Verification**: Implement fact-checking and answer verification mechanisms
+
+ JSON Data RAG Extension is work in progress. you can check the code in the `testing` branch.
