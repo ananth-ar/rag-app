@@ -283,8 +283,8 @@ The system operates through two main workflows:
 
 #### Dynamic Batch Indexing
 
-- **Choice**: Using Weaviate's batch dynamic indexing
-- **Advantages**: Better ingestion performance for large documents
+- **Choice**: Using Weaviate's batch dynamic indexing with automatic index optimization
+- **Advantages**: Better ingestion performance for large documents, leverages dynamic vector indexing that starts as a flat index and automatically switches to HNSW when data exceeds ~10,000 objects
 - **Trade-offs**: Slight delay before vectors are searchable
 
 #### LLM Integration
