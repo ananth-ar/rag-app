@@ -14,7 +14,7 @@ services:
     networks:
       - rag-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      test: ["CMD", "curl", "-f", "http://0.0.0.0:8000/docs"]
       interval: 30s
       timeout: 30s
       retries: 5
